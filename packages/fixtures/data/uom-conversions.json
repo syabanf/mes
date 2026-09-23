@@ -1,0 +1,1 @@
+[{"id":"uc-kg-g","fromUomId":"uom-kg","toUomId":"uom-g","factor":1000,"itemId":null},{"id":"uc-l-ml","fromUomId":"uom-l","toUomId":"uom-ml","factor":1000,"itemId":null},{"id":"uc-box-pcs-gb001","fromUomId":"uom-box","toUomId":"uom-pcs","factor":50,"itemId":"prod-gb001"},{"id":"uc-roll-pcs-holo","fromUomId":"uom-roll","toUomId":"uom-pcs","factor":1000,"itemId":"mat-holo"}]

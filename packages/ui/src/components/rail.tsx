@@ -1,0 +1,252 @@
+import { cloneElement, isValidElement, type ComponentProps, type ReactNode } from 'react'
+import { ChevronsUpDown, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { Slot } from 'radix-ui'
+import { cn } from '../lib/cn'
+import { CountBadge } from './badge'
+import { Tooltip } from './tooltip'
+
+const focusRing = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40'
+// Pushes rail tooltips past the rail's edge so the ink bubble sits on the canvas.
+const TOOLTIP_OFFSET = 22
+
+export type RailProps = {
+  expanded: boolean
+  header: ReactNode
+  action?: ReactNode
+  workspace?: ReactNode
+  footer?: ReactNode
+  children: ReactNode
+  className?: string
+}
+
+/** Floating dark rail: header, create action, scrolling nav, workspace switcher, footer. */
+export function Rail({ expanded, header, action, workspace, footer, children, className }: RailProps) {
+  return (
+    <aside
+      data-expanded={expanded}
+      className={cn(
+        'flex h-full flex-col rounded-hero bg-ink py-4 text-on-ink shadow-float transition-[width] duration-200',
+        expanded ? 'w-60 px-3' : 'w-[76px] items-center',
+        className,
+      )}
+    >
+      <div className="flex w-full shrink-0 justify-center">{header}</div>
+      {action !== undefined && <div className="mt-4 flex w-full shrink-0 justify-center">{action}</div>}
+      {/* mt-3 plus p-1 keeps the 16px gap while leaving room for focus rings inside the scroll box. */}
+      <nav
+        aria-label="Main"
+        className={cn(
+          'no-scrollbar mt-3 flex min-h-0 w-full flex-1 flex-col gap-1 overflow-y-auto p-1',
+          !expanded && 'items-center',
+        )}
+      >
+        {children}
+      </nav>
+      {workspace !== undefined && <div className="mt-3 flex w-full shrink-0 justify-center">{workspace}</div>}
+      {footer !== undefined && (
+        <div className={cn('mt-3 flex w-full shrink-0 flex-col gap-1', !expanded && 'items-center')}>{footer}</div>
+      )}
+    </aside>
+  )
+}
+
+export type RailItemProps = Omit<ComponentProps<'button'>, 'children'> & {
+  icon?: ReactNode
+  label: ReactNode
+  active?: boolean
+  expanded: boolean
+  badge?: number
+  sub?: boolean
+  trailing?: ReactNode
+  asChild?: boolean
+  children?: ReactNode
+}
+
+/**
+ * Nav entry. With `asChild`, pass one element (a router link) as the child: it receives the
+ * classes and props, and its content is replaced by icon, label and badge.
+ *
+ *   <RailItem asChild icon={<Wrench />} label="Assets" expanded={expanded} active={isActive}>
+ *     <NavLink to="/assets" />
+ *   </RailItem>
+ */
+export function RailItem({
+  icon,
+  label,
+  active = false,
+  expanded,
+  badge = 0,
+  sub = false,
+  trailing,
+  asChild = false,
+  children,
+  className,
+  ...props
+}: RailItemProps) {
+  const classes = cn(
+    'relative flex shrink-0 items-center rounded-2xl text-on-ink-muted transition-colors hover:bg-white/10 hover:text-white [&_svg]:size-5 [&_svg]:shrink-0',
+    focusRing,
+    'data-[active=true]:bg-accent data-[active=true]:text-white data-[active=true]:shadow-glow',
+    !expanded
+      ? 'size-11 justify-center'
+      : sub
+        ? 'h-9 w-full gap-3 pl-11 pr-3 text-[13px] font-medium'
+        : 'h-11 w-full gap-3 px-3 text-sm font-medium',
+    className,
+  )
+
+  const content = expanded ? (
+    <>
+      {icon}
+      <span className="min-w-0 flex-1 truncate text-left">{label}</span>
+      {trailing}
+      <CountBadge count={badge} tone="white" className="ring-0" />
+      {!asChild && children}
+    </>
+  ) : (
+    <>
+      {icon}
+      <span className="sr-only">{label}</span>
+      <CountBadge count={badge} tone="white" className="absolute -right-1 -top-1" />
+    </>
+  )
+
+  const shared = {
+    'data-active': active,
+    'aria-current': active ? ('page' as const) : undefined,
+    className: classes,
+  }
+
+  const element =
+    asChild && isValidElement(children) ? (
+      <Slot.Root {...shared} {...props}>
+        {cloneElement(children, undefined, content)}
+      </Slot.Root>
+    ) : (
+      <button type="button" {...shared} {...props}>
+        {content}
+      </button>
+    )
+
+  return (
+    <Tooltip content={label} side="right" sideOffset={TOOLTIP_OFFSET} disabled={expanded}>
+      {element}
+    </Tooltip>
+  )
+}
+
+export type RailActionProps = ComponentProps<'button'> & { label: string; expanded: boolean }
+
+/** Round accent create button. Forwards ref and props, so it works as a menu trigger (`asChild`). */
+export function RailAction({ label, expanded, className, children, ...props }: RailActionProps) {
+  return (
+    <Tooltip content={label} side="right" sideOffset={TOOLTIP_OFFSET} disabled={expanded}>
+      <button
+        type="button"
+        aria-label={expanded ? undefined : label}
+        className={cn(
+          'inline-flex shrink-0 items-center justify-center bg-accent text-white shadow-glow transition-colors hover:bg-accent-strong active:scale-[0.98] [&_svg]:size-5 [&_svg]:shrink-0',
+          focusRing,
+          expanded
+            ? 'h-11 w-full gap-2 rounded-full px-4 text-sm font-semibold'
+            : 'size-11 rounded-full hover:-translate-y-px hover:scale-105',
+          className,
+        )}
+        {...props}
+      >
+        {children}
+        {expanded && <span className="truncate">{label}</span>}
+      </button>
+    </Tooltip>
+  )
+}
+
+export type RailWorkspaceProps = ComponentProps<'button'> & {
+  icon: ReactNode
+  kicker: ReactNode
+  name: ReactNode
+  expanded: boolean
+}
+
+/** Tenant switcher card. Forwards ref and props for use as a DropdownMenuTrigger child. */
+export function RailWorkspace({ icon, kicker, name, expanded, className, ...props }: RailWorkspaceProps) {
+  if (!expanded) {
+    return (
+      <Tooltip content={name} side="right" sideOffset={TOOLTIP_OFFSET}>
+        <button
+          type="button"
+          className={cn(
+            'flex size-11 shrink-0 items-center justify-center rounded-2xl bg-card text-ink transition-colors hover:bg-surface active:scale-[0.98] [&_svg]:size-5',
+            focusRing,
+            className,
+          )}
+          {...props}
+        >
+          {icon}
+          <span className="sr-only">
+            {kicker} {name}
+          </span>
+        </button>
+      </Tooltip>
+    )
+  }
+  return (
+    <button
+      type="button"
+      className={cn(
+        'flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-ink-2 p-2.5 text-left transition-colors hover:bg-ink-3 active:scale-[0.98]',
+        focusRing,
+        className,
+      )}
+      {...props}
+    >
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-card text-ink [&_svg]:size-[18px]">
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[10.5px] font-semibold text-on-ink-muted">{kicker}</span>
+        <span className="block truncate text-[12.5px] font-bold text-white">{name}</span>
+      </span>
+      <ChevronsUpDown aria-hidden="true" className="size-4 shrink-0 text-on-ink-muted" />
+    </button>
+  )
+}
+
+export type RailCollapseProps = { expanded: boolean; onToggle: () => void; className?: string }
+
+export function RailCollapse({ expanded, onToggle, className }: RailCollapseProps) {
+  if (expanded) {
+    return (
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={true}
+        className={cn(
+          'flex h-10 w-full items-center justify-center gap-2 rounded-2xl border border-white/10 text-xs font-semibold text-on-ink-muted transition-colors hover:bg-white/10 hover:text-white [&_svg]:size-4',
+          focusRing,
+          className,
+        )}
+      >
+        <PanelLeftClose aria-hidden="true" />
+        Collapse menu
+      </button>
+    )
+  }
+  return (
+    <Tooltip content="Expand menu" side="right" sideOffset={TOOLTIP_OFFSET}>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-label="Expand menu"
+        aria-expanded={false}
+        className={cn(
+          'flex size-11 items-center justify-center rounded-2xl text-on-ink-muted transition-colors hover:bg-white/10 hover:text-white [&_svg]:size-5',
+          focusRing,
+          className,
+        )}
+      >
+        <PanelLeftOpen aria-hidden="true" />
+      </button>
+    </Tooltip>
+  )
+}

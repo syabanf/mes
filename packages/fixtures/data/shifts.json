@@ -1,0 +1,1 @@
+[{"id":"sh-1","code":"SH-1","name":"Pagi","start":"07:00","end":"15:00","days":[1,2,3,4,5,6],"breakMin":45},{"id":"sh-2","code":"SH-2","name":"Siang","start":"15:00","end":"23:00","days":[1,2,3,4,5,6],"breakMin":45},{"id":"sh-3","code":"SH-3","name":"Malam","start":"23:00","end":"07:00","days":[1,2,3,4,5,6],"breakMin":45}]
