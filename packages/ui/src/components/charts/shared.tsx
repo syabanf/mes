@@ -27,7 +27,11 @@ function niceStep(range: number, count: number): number {
 const clean = (value: number) => Number.parseFloat(value.toPrecision(12))
 
 /** Rounded domain and tick values (0 / 250 / 500 …) covering `min..max`. */
-export function niceScale(min: number, max: number, count: number): { min: number; max: number; ticks: number[] } {
+export function niceScale(
+  min: number,
+  max: number,
+  count: number,
+): { min: number; max: number; ticks: number[] } {
   let lo = min
   let hi = max
   if (lo === hi) {
@@ -48,7 +52,8 @@ export function ticksWithin(min: number, max: number, count: number): number[] {
   if (!(max > min)) return [min]
   const step = niceStep(max - min, count)
   const ticks: number[] = []
-  for (let value = Math.ceil(min / step) * step; value <= max + step / 1e6; value += step) ticks.push(clean(value))
+  for (let value = Math.ceil(min / step) * step; value <= max + step / 1e6; value += step)
+    ticks.push(clean(value))
   return ticks
 }
 
@@ -83,7 +88,13 @@ export function axisWidth(tickLabels: string[]): number {
   return Math.ceil(Math.max(0, ...tickLabels.map(textWidth))) + 10
 }
 
-type YGridProps = { ticks: number[]; labels: string[]; y: (value: number) => number; left: number; right: number }
+type YGridProps = {
+  ticks: number[]
+  labels: string[]
+  y: (value: number) => number
+  left: number
+  right: number
+}
 
 /** Solid 1px gridlines, one per tick, with the tick labels right-aligned in the axis band. */
 export function YGrid({ ticks, labels, y, left, right }: YGridProps) {
@@ -98,7 +109,13 @@ export function YGrid({ ticks, labels, y, left, right }: YGridProps) {
         shapeRendering="crispEdges"
         className="stroke-border"
       />
-      <text x={left - 10} y={y(tick)} dy="0.32em" textAnchor="end" className="fill-muted text-[11px] tabular-nums">
+      <text
+        x={left - 10}
+        y={y(tick)}
+        dy="0.32em"
+        textAnchor="end"
+        className="fill-muted text-[11px] tabular-nums"
+      >
         {labels[index]}
       </text>
     </g>
@@ -107,7 +124,13 @@ export function YGrid({ ticks, labels, y, left, right }: YGridProps) {
 
 export function XLabels({ labels, y }: { labels: ReturnType<typeof xAxisLabels>; y: number }) {
   return labels.map((label) => (
-    <text key={label.index} x={label.x} y={y} textAnchor="middle" className="fill-muted text-[11px] tabular-nums">
+    <text
+      key={label.index}
+      x={label.x}
+      y={y}
+      textAnchor="middle"
+      className="fill-muted text-[11px] tabular-nums"
+    >
       {label.text}
     </text>
   ))
@@ -119,7 +142,15 @@ type ReferenceLineProps = { y: number; left: number; right: number; label: strin
 export function ReferenceLine({ y, left, right, label, className }: ReferenceLineProps) {
   return (
     <g className="pointer-events-none">
-      <line x1={left} x2={right} y1={y} y2={y} strokeWidth={1} shapeRendering="crispEdges" className={className} />
+      <line
+        x1={left}
+        x2={right}
+        y1={y}
+        y2={y}
+        strokeWidth={1}
+        shapeRendering="crispEdges"
+        className={className}
+      />
       <text x={right} y={y - 5} textAnchor="end" className="fill-muted text-[11px]">
         {label}
       </text>
@@ -152,10 +183,20 @@ type ChartTooltipProps = {
 }
 
 /** HTML tooltip above the SVG: value first in bold, label second, clamped inside the chart width. */
-export function ChartTooltip({ x, y, containerWidth, value, label, below = false, onDark = false }: ChartTooltipProps) {
+export function ChartTooltip({
+  x,
+  y,
+  containerWidth,
+  value,
+  label,
+  below = false,
+  onDark = false,
+}: ChartTooltipProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
 
+  // Measures after every render on purpose: the bubble width follows its rendered content, not a prop.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
     const measured = ref.current?.offsetWidth ?? 0
     if (measured !== width) setWidth(measured)
@@ -170,8 +211,8 @@ export function ChartTooltip({ x, y, containerWidth, value, label, below = false
       aria-hidden="true"
       style={{ left, top: y, transform: `translate(-50%, ${below ? '10px' : 'calc(-100% - 10px)'})` }}
       className={cn(
-        'pointer-events-none absolute z-10 whitespace-nowrap rounded-xl bg-ink px-2.5 py-1.5 text-xs leading-tight text-on-ink shadow-float',
-        onDark && 'ring-1 ring-white/15',
+        'rounded-xl px-2.5 py-1.5 text-xs leading-tight pointer-events-none absolute z-10 bg-ink whitespace-nowrap text-on-ink shadow-float',
+        onDark && 'ring-white/15 ring-1',
       )}
     >
       <div className="font-semibold tabular-nums">{value}</div>

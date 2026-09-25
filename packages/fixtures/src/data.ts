@@ -1,4 +1,3 @@
-/// <reference path="./json.d.ts" />
 import { hydrateFgReservations, type AppState } from './store'
 import boms from '../data/boms.json'
 import bops from '../data/bops.json'

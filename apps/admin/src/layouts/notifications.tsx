@@ -85,7 +85,7 @@ export function useNotifications(): NotificationItem[] {
         tone: 'danger',
         icon: <PauseOctagon />,
         title: `${h.code} blocks ${h.target.toUpperCase()}`,
-        body: `${s.reasonLabel(h.reasonCodeId)} · ${s.maps.mo.get(h.moId)?.code ?? ''}`,
+        body: `${s.reasonLabel(h.reasonCodeId)} · ${(h.moId && s.maps.mo.get(h.moId)?.code) || 'No order'}`,
         at: h.heldAt,
         to: paths.hold(h.id),
         mine: user?.role === 'quality' || user?.role === 'supervisor',

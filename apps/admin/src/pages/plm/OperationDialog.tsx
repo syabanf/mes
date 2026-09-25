@@ -1,4 +1,4 @@
-import { newId } from '@mes/fixtures'
+import { newId, workCenterForSite } from '@mes/fixtures'
 import type { Bop, Operation } from '@mes/types'
 import {
   Button,
@@ -49,7 +49,7 @@ function OperationForm({ bop, op, onDone }: { bop: Bop; op: Operation | null; on
   const [seq, setSeq] = useState(String(op?.seq ?? nextSeq(bop.operations)))
   const [code, setCode] = useState(op?.code ?? '')
   const [name, setName] = useState(op?.name ?? '')
-  const [workCenterId, setWorkCenterId] = useState<string | null>(op?.workCenterId ?? null)
+  const [workCenterCode, setWorkCenterCode] = useState<string | null>(op?.workCenterCode ?? null)
   const [setup, setSetup] = useState(String(op?.setupMin ?? 0))
   const [cycle, setCycle] = useState(String(op?.cycleSec ?? 0))
   const [queue, setQueue] = useState(String(op?.queueMin ?? 0))
@@ -70,6 +70,7 @@ function OperationForm({ bop, op, onDone }: { bop: Bop; op: Operation | null; on
     label: `Op ${o.seq}`,
     description: `${o.code} · ${o.name}`,
   }))
+  const workCenter = workCenterCode ? workCenterForSite(s.orgNodes, s.siteId, workCenterCode) : undefined
   const instructions = useMemo(
     () => s.workInstructions.filter((w) => w.productId === bop.productId && w.state !== 'obsolete'),
     [s.workInstructions, bop.productId],
@@ -84,7 +85,7 @@ function OperationForm({ bop, op, onDone }: { bop: Bop; op: Operation | null; on
         : null,
     code: !code.trim() ? 'Enter the operation code.' : null,
     name: !name.trim() ? 'Enter the operation name.' : null,
-    workCenter: !workCenterId ? 'Choose the work center.' : null,
+    workCenter: !workCenterCode ? 'Choose the work center.' : null,
     setup: nonNegative(setup),
     cycle: nonNegative(cycle),
     queue: nonNegative(queue),
@@ -95,13 +96,13 @@ function OperationForm({ bop, op, onDone }: { bop: Bop; op: Operation | null; on
   const submit = (e: FormEvent) => {
     e.preventDefault()
     setTried(true)
-    if (Object.values(errors).some(Boolean) || !workCenterId) return
+    if (Object.values(errors).some(Boolean) || !workCenterCode) return
     const next: Operation = {
       id: op?.id ?? newId('op'),
       seq: Number(seq),
       code: code.trim().toUpperCase(),
       name: name.trim(),
-      workCenterId,
+      workCenterCode,
       setupMin: Number(setup),
       cycleSec: Number(cycle),
       queueMin: Number(queue),
@@ -151,11 +152,18 @@ function OperationForm({ bop, op, onDone }: { bop: Bop; op: Operation | null; on
             <Input value={name} onChange={(e) => setName(e.target.value)} invalid={!!show(errors.name)} />
           </FormField>
         </div>
-        <FormField label="Work center" required error={show(errors.workCenter)}>
+        <FormField
+          label="Work center"
+          required
+          error={show(errors.workCenter)}
+          hint={
+            workCenterCode && !workCenter ? `${workCenterCode} has no work center at this site` : undefined
+          }
+        >
           <OrgNodePicker
             kind="work_center"
-            value={workCenterId}
-            onChange={setWorkCenterId}
+            value={workCenter?.id ?? null}
+            onChange={(id) => setWorkCenterCode(id ? (s.maps.orgNode.get(id)?.code ?? null) : null)}
             invalid={!!show(errors.workCenter)}
           />
         </FormField>

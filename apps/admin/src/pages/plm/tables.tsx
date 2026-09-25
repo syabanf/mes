@@ -1,4 +1,4 @@
-import { fmtIdr, fmtNumber, fmtPercent } from '@mes/fixtures'
+import { fmtIdr, fmtNumber, fmtPercent, workCenterForSite } from '@mes/fixtures'
 import type {
   BomItem,
   BorItem,
@@ -197,8 +197,18 @@ export function BomTable({ bom, onEdit, onRemove }: { bom: Bom } & RowActionProp
 
 // ─── BOR ────────────────────────────────────────────────────────
 
+/** Work center name at the current site, or the bare code when this site has no such node. */
+function useWorkCenterName() {
+  const s = useScoped()
+  return (code: string) => {
+    const wc = workCenterForSite(s.orgNodes, s.siteId, code)
+    return wc ? s.orgName(wc.id) : code
+  }
+}
+
 export function BorTable({ bor, onEdit, onRemove }: { bor: Bor } & RowActionProps<BorItem>) {
   const s = useScoped()
+  const workCenterName = useWorkCenterName()
   const resourceCodes = (ids: string[]) => ids.map((id) => s.maps.resource.get(id)?.code ?? id)
   const machineCodes = (ids: string[]) => ids.map((id) => s.maps.machine.get(id)?.code ?? id)
   const skillNames = (ids: string[]) => ids.map((id) => s.maps.skill.get(id)?.name ?? id)
@@ -214,7 +224,7 @@ export function BorTable({ bor, onEdit, onRemove }: { bor: Bor } & RowActionProp
             {i.operationSeq}
           </span>
           <div className="min-w-0">
-            <p className="text-sm font-medium truncate">{s.orgName(i.workCenterId)}</p>
+            <p className="text-sm font-medium truncate">{workCenterName(i.workCenterCode)}</p>
             <p className="truncate text-[11px] text-muted">
               {i.operatorCount} operator{i.operatorCount === 1 ? '' : 's'} · setup {i.standardSetupMin} min ·
               cycle {fmtSeconds(i.standardCycleSec)}
@@ -336,6 +346,7 @@ export function OpTrail({ bop, className }: { bop: Bop; className?: string }) {
 
 export function BopTable({ bop, onEdit, onRemove }: { bop: Bop } & RowActionProps<Operation>) {
   const s = useScoped()
+  const workCenterName = useWorkCenterName()
   const ops = [...bop.operations].sort((a, b) => a.seq - b.seq)
 
   return (
@@ -369,8 +380,8 @@ export function BopTable({ bop, onEdit, onRemove }: { bop: Bop } & RowActionProp
                 )}
               </p>
               <p className="mt-0.5 text-xs text-muted">
-                {s.orgName(op.workCenterId)} · setup {op.setupMin} min · cycle {fmtSeconds(op.cycleSec)} ·
-                queue {op.queueMin} min · transfer {op.transferMin} min
+                {workCenterName(op.workCenterCode)} · setup {op.setupMin} min · cycle{' '}
+                {fmtSeconds(op.cycleSec)} · queue {op.queueMin} min · transfer {op.transferMin} min
               </p>
               <p className="mt-1 gap-x-3 gap-y-1 text-xs flex flex-wrap items-center text-muted">
                 <span>After: {op.predecessorSeqs.length ? op.predecessorSeqs.join(', ') : 'start'}</span>

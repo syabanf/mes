@@ -16,7 +16,12 @@ export type LazyList<T> = {
  */
 export function useLazyList<T>(
   items: T[],
-  opts: { pageSize?: number; resetKey?: unknown; initialCount?: number; onCountChange?: (count: number) => void } = {},
+  opts: {
+    pageSize?: number
+    resetKey?: unknown
+    initialCount?: number
+    onCountChange?: (count: number) => void
+  } = {},
 ): LazyList<T> {
   const pageSize = opts.pageSize ?? 6
   const [state, setState] = useState({ key: opts.resetKey, count: opts.initialCount ?? pageSize })
@@ -53,6 +58,7 @@ export function useLazyList<T>(
       return () => io.disconnect()
     },
     // `count` re-creates the observer after every page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [hasMore, count, loadMore],
   )
 

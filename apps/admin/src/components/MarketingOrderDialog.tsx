@@ -99,6 +99,8 @@ function MarketingOrderForm({ onDone }: { onDone: (saved: MarketingOrder | null)
       reference,
       status: 'draft',
       note,
+      deliveredAt: null,
+      closedAt: null,
       createdBy: user.id,
       createdAt: nowIso(),
     }

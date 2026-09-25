@@ -52,7 +52,7 @@ export function NcrDetailPage() {
 
   const related = useMemo(() => {
     if (!ncr) return { inspections: [], holds: [] }
-    const onRecord = (moId: string, wipId: string | null) =>
+    const onRecord = (moId: string | null, wipId: string | null) =>
       (ncr.wipId && wipId === ncr.wipId) || (!ncr.wipId && !!ncr.moId && moId === ncr.moId)
     return {
       inspections: s.inspections

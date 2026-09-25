@@ -342,7 +342,7 @@ function HoldForm({ editing, onDone }: { editing: QualityHold | null; onDone: ()
     () => new Set(s.qualityHolds.filter((h) => h.status === 'active').map((h) => h.targetId)),
     [s.qualityHolds],
   )
-  const items = useMemo<{ id: string; label: string; description: string; moId: string }[]>(() => {
+  const items = useMemo<{ id: string; label: string; description: string; moId: string | null }[]>(() => {
     switch (target) {
       case 'wip':
         return s.wips
@@ -363,7 +363,7 @@ function HoldForm({ editing, onDone }: { editing: QualityHold | null; onDone: ()
             id: l.id,
             label: l.code,
             description: `${s.materialName(l.materialId)} · ${l.qty} ${s.uomCode(l.uomId)} · ${s.locationName(l.locationId)}`,
-            moId: s.wips.find((w) => w.lotIds.includes(l.id))?.moId ?? '',
+            moId: s.wips.find((w) => w.lotIds.includes(l.id))?.moId ?? null,
           }))
       case 'mo':
         return s.manufacturingOrders

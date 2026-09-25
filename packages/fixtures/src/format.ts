@@ -93,7 +93,7 @@ export const fmtNumber = (value: number, digits = 0) =>
 export const fmtPercent = (ratio: number, digits = 0) => `${(ratio * 100).toFixed(digits)}%`
 
 /** Rp 125.000 */
-export const fmtIdr = (value: number) => idrFmt.format(Math.round(value)).replace(/ /g, ' ')
+export const fmtIdr = (value: number) => idrFmt.format(Math.round(value)).replace(/\u00a0/g, ' ')
 
 /** Rp 850 rb · Rp 12,5 jt · Rp 1,2 M */
 export function fmtIdrShort(value: number): string {

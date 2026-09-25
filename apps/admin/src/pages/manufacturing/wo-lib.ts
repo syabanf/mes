@@ -1,4 +1,4 @@
-import { type WoAssignment, materialReadiness, toMs } from '@mes/fixtures'
+import { type WoAssignment, listedMachines, materialReadiness, toMs } from '@mes/fixtures'
 import type { BorItem, Inspection, MachineState, Operation, WorkInstruction, WorkOrder } from '@mes/types'
 import { MAINTENANCE_STATE_LABEL, OPEN_WO_STATUSES, PRIORITY_RANK, RESOURCE_STATUS_LABEL } from '@mes/types'
 import type { Scoped } from '../../state/scoped'
@@ -64,11 +64,11 @@ export function validateAssignment(s: Scoped, wo: WorkOrder, a: WoAssignment = {
   const resourceIds = [...(a.toolIds ?? wo.toolIds), ...(a.moldIds ?? wo.moldIds)]
   const machine = machineId ? s.maps.machine.get(machineId) : undefined
 
-  const listed = bor?.machineIds ?? []
+  const listed = bor ? listedMachines(s.state, wo.workCenterId, bor.machineIds) : []
   const eligible =
     !!machine &&
     machine.workCenterId === wo.workCenterId &&
-    (listed.length === 0 || listed.includes(machine.id)) &&
+    (!bor?.machineIds.length || listed.some((m) => m.id === machine.id)) &&
     (machine.eligibleProductIds.length === 0 || !mo || machine.eligibleProductIds.includes(mo.productId))
   const available = !!machine && !isMachineUnavailable(machine)
 

@@ -79,6 +79,7 @@ import type {
 } from '@mes/types'
 import { VALIDATION_CHECKS } from '@mes/types'
 import { HOUR, addHours, toIso, toMs } from './dates'
+import { orgDescendants, workCenterForSite } from './derive'
 import { newId, nextCode } from './ids'
 
 export interface AppState {
@@ -410,6 +411,167 @@ const remove = <T extends { id: string }>(list: T[], id: string) => list.filter(
 
 const stripUpsert = (type: string) => type.replace(/\/(upsert|remove)$/, '') as keyof AppState
 
+// ─── cascading deletes ──────────────────────────────────────────
+
+type Cascade = (state: AppState, id: string) => Partial<AppState>
+
+const without = (ids: readonly string[], id: string) => ids.filter((x) => x !== id)
+const nullIf = <T>(value: T, id: string) => (value === id ? null : value)
+
+/** Rows that go with a product: its engineering data and the site policies keyed on it. */
+const productCascade: Cascade = (state, id) => ({
+  productRevisions: state.productRevisions.filter((r) => r.productId !== id),
+  boms: state.boms.filter((b) => b.productId !== id),
+  bors: state.bors.filter((b) => b.productId !== id),
+  bops: state.bops.filter((b) => b.productId !== id),
+  specifications: state.specifications.filter((x) => x.productId !== id),
+  workInstructions: state.workInstructions.filter((w) => w.productId !== id),
+  inspectionPlans: state.inspectionPlans.filter((p) => p.productId !== id),
+  inventoryPolicies: state.inventoryPolicies.filter((p) => p.productId !== id),
+  serialRules: state.serialRules.filter((r) => r.productId !== id),
+  lotRules: state.lotRules.filter((r) => !(r.itemKind === 'product' && r.itemId === id)),
+  fgStock: state.fgStock.filter((f) => f.productId !== id),
+})
+
+const machineCascade: Cascade = (state, id) => ({
+  workOrders: state.workOrders.map((w) =>
+    w.machineId === id && w.status !== 'completed' ? { ...w, machineId: null } : w,
+  ),
+  integrationMappings: state.integrationMappings.filter(
+    (m) => !(m.entityKind === 'machine' && m.internalId === id),
+  ),
+  telemetry: state.telemetry.filter((t) => t.machineId !== id),
+  oeeSnapshots: state.oeeSnapshots.filter((o) => o.machineId !== id),
+  maintenanceRecords: state.maintenanceRecords.filter((r) => r.machineId !== id),
+  bors: state.bors.map((b) => ({
+    ...b,
+    items: b.items.map((i) => ({ ...i, machineIds: without(i.machineIds, id) })),
+  })),
+})
+
+/** Drop a revision-level document id from every product revision that references it. */
+const revisionRef =
+  (field: 'bomId' | 'borId' | 'bopId' | 'specIds' | 'workInstructionIds'): Cascade =>
+  (state, id) => ({
+    productRevisions: state.productRevisions.map((r) =>
+      field === 'specIds' || field === 'workInstructionIds'
+        ? { ...r, [field]: without(r[field], id) }
+        : { ...r, [field]: nullIf(r[field], id) },
+    ),
+  })
+
+const CASCADES: Partial<Record<keyof AppState, Cascade>> = {
+  orgNodes: (state, id) => {
+    const removed = orgDescendants(state.orgNodes, id)
+    const machines = state.machines.filter((m) => removed.has(m.workCenterId))
+    const base: AppState = {
+      ...state,
+      orgNodes: state.orgNodes.filter((n) => !removed.has(n.id)),
+      resources: state.resources.map((r) =>
+        r.workCenterId && removed.has(r.workCenterId) ? { ...r, workCenterId: null } : r,
+      ),
+      inventoryLocations: state.inventoryLocations.map((l) =>
+        l.orgNodeId && removed.has(l.orgNodeId) ? { ...l, orgNodeId: null } : l,
+      ),
+      people: state.people.map((p) => ({
+        ...p,
+        workCenterIds: p.workCenterIds.filter((wc) => !removed.has(wc)),
+      })),
+      manufacturingOrders: state.manufacturingOrders.map((m) =>
+        m.lineId && removed.has(m.lineId) ? { ...m, lineId: null } : m,
+      ),
+    }
+    return machines.reduce((next, m) => cascadeRemove(next, 'machines', m.id), base)
+  },
+  products: productCascade,
+  materials: (state, id) => ({
+    materialLots: state.materialLots.filter((l) => l.materialId !== id),
+    floorStock: state.floorStock.filter((f) => f.materialId !== id),
+    materialRequirements: state.materialRequirements.filter((r) => r.materialId !== id),
+    lotRules: state.lotRules.filter((r) => !(r.itemKind === 'material' && r.itemId === id)),
+    boms: state.boms.map((b) => ({
+      ...b,
+      items: b.items
+        .filter((i) => i.materialId !== id)
+        .map((i) => ({ ...i, substituteMaterialIds: without(i.substituteMaterialIds, id) })),
+    })),
+    suppliers: state.suppliers.map((x) => ({ ...x, materialIds: without(x.materialIds, id) })),
+  }),
+  machines: machineCascade,
+  people: (state, id) => ({
+    workOrders: state.workOrders.map((w) =>
+      w.operatorIds.includes(id) ? { ...w, operatorIds: without(w.operatorIds, id) } : w,
+    ),
+  }),
+  marketingOrders: (state, id) => {
+    const itemIds = new Set(state.marketingOrderItems.filter((i) => i.orderId === id).map((i) => i.id))
+    const demandIds = new Set(
+      state.demands.filter((d) => d.orderItemId && itemIds.has(d.orderItemId)).map((d) => d.id),
+    )
+    const { stock, reservations } = releaseFgReservations(state, demandIds)
+    return {
+      marketingOrderItems: state.marketingOrderItems.filter((i) => !itemIds.has(i.id)),
+      demands: state.demands.filter((d) => !demandIds.has(d.id)),
+      manufacturingOrders: state.manufacturingOrders.map((m) => ({
+        ...m,
+        demandIds: m.demandIds.filter((d) => !demandIds.has(d)),
+      })),
+      fgStock: stock,
+      fgReservations: reservations,
+    }
+  },
+  demands: (state, id) => ({
+    manufacturingOrders: state.manufacturingOrders.map((m) =>
+      m.demandIds.includes(id) ? { ...m, demandIds: without(m.demandIds, id) } : m,
+    ),
+  }),
+  replenishments: (state, id) => ({
+    manufacturingOrders: state.manufacturingOrders.map((m) =>
+      m.replenishmentId === id ? { ...m, replenishmentId: null } : m,
+    ),
+  }),
+  materialLots: (state, id) => ({
+    floorStock: state.floorStock.filter((f) => f.lotId !== id),
+    wips: state.wips.map((w) => (w.lotIds.includes(id) ? { ...w, lotIds: without(w.lotIds, id) } : w)),
+  }),
+  wips: (state, id) => ({
+    wips: state.wips
+      .filter((w) => w.id !== id)
+      .map((w) => (w.parentIds.includes(id) ? { ...w, parentIds: without(w.parentIds, id) } : w)),
+    reworkOrders: state.reworkOrders.map((r) => ({
+      ...r,
+      sourceWipId: nullIf(r.sourceWipId, id),
+      reworkWipId: nullIf(r.reworkWipId, id),
+    })),
+  }),
+  inspections: (state, id) => ({
+    defectRecords: state.defectRecords.map((d) => ({ ...d, inspectionId: nullIf(d.inspectionId, id) })),
+    reworkOrders: state.reworkOrders.map((r) => ({ ...r, inspectionId: nullIf(r.inspectionId, id) })),
+  }),
+  workOrders: (state, id) => ({
+    wips: state.wips.filter((w) => w.woId !== id),
+    inspections: state.inspections.map((i) => ({ ...i, woId: nullIf(i.woId, id) })),
+  }),
+  reworkOrders: (state, id) => {
+    const rework = state.reworkOrders.find((r) => r.id === id)
+    return rework?.reworkWipId ? { wips: state.wips.filter((w) => w.id !== rework.reworkWipId) } : {}
+  },
+  specifications: revisionRef('specIds'),
+  workInstructions: revisionRef('workInstructionIds'),
+  boms: revisionRef('bomId'),
+  bors: revisionRef('borId'),
+  bops: revisionRef('bopId'),
+}
+
+/** Remove one row and everything that would dangle without it. */
+export function cascadeRemove(state: AppState, key: keyof AppState, id: string): AppState {
+  return {
+    ...state,
+    [key]: remove(state[key] as { id: string }[], id),
+    ...CASCADES[key]?.(state, id),
+  }
+}
+
 function codeOf(state: AppState, entity: string, fallbackPrefix: string, digits = 5): string {
   const seq = state.numbering.find((n) => n.entity === entity)
   if (!seq) return nextCode([], fallbackPrefix, digits)
@@ -694,6 +856,20 @@ export function deliveryBlocker(state: AppState, item: MarketingOrderItem, qty: 
   return null
 }
 
+/**
+ * Machines a BOR line allows in a work center: the listed ones when any of them sit in that
+ * work center, otherwise every active machine there (the BOR lists one site's machines).
+ */
+export function listedMachines(
+  state: Pick<AppState, 'machines'>,
+  workCenterId: string,
+  machineIds: readonly string[],
+): Machine[] {
+  const inCenter = state.machines.filter((m) => m.active && m.workCenterId === workCenterId)
+  const listed = inCenter.filter((m) => machineIds.includes(m.id))
+  return listed.length ? listed : inCenter
+}
+
 /** Pre-release validation against the current engineering data and floor stock. */
 export function validateMo(state: AppState, mo: ManufacturingOrder): Validation[] {
   const revision = currentRevision(state, mo.productId)
@@ -702,13 +878,27 @@ export function validateMo(state: AppState, mo: ManufacturingOrder): Validation[
   const bop = state.bops.find((b) => b.id === revision?.bopId)
   const specs = state.specifications.filter((s) => revision?.specIds.includes(s.id))
   const instructions = state.workInstructions.filter((w) => revision?.workInstructionIds.includes(w.id))
-  const machines = state.machines.filter(
-    (m) => m.active && bor?.items.some((i) => i.machineIds.includes(m.id)),
+  const workCenterCodes = [...new Set(bop?.operations.map((o) => o.workCenterCode))]
+  const unresolved = workCenterCodes.filter((code) => !workCenterForSite(state.orgNodes, mo.siteId, code))
+  const borLines = (bor?.items ?? []).map((item) => ({
+    item,
+    wc: workCenterForSite(state.orgNodes, mo.siteId, item.workCenterCode),
+  }))
+  const machines = borLines.flatMap(({ item, wc }) =>
+    wc ? listedMachines(state, wc.id, item.machineIds) : [],
+  )
+  // Listed machines at this site that sit in another work center than the routing says.
+  const misplaced = borLines.flatMap(({ item, wc }) =>
+    state.machines.filter(
+      (m) =>
+        item.machineIds.includes(m.id) &&
+        m.workCenterId !== wc?.id &&
+        state.orgNodes.find((n) => n.id === m.workCenterId)?.siteId === mo.siteId,
+    ),
   )
   const eligible = machines.filter(
     (m) => m.maintenanceState !== 'in_maintenance' && m.maintenanceState !== 'unavailable',
   )
-  const workCenters = new Set(bop?.operations.map((o) => o.workCenterId))
   const skills = new Set(bor?.items.flatMap((i) => i.skillIds))
   const qualified = state.people.filter((p) => p.role === 'operator' && p.siteIds.includes(mo.siteId))
   const uncovered = [...skills].filter((s) => !qualified.some((p) => (p.skills[s] ?? 0) >= 2))
@@ -745,13 +935,17 @@ export function validateMo(state: AppState, mo: ManufacturingOrder): Validation[
     },
     machine: {
       check: 'machine',
-      ok: eligible.length > 0 && eligible.length === machines.length,
-      note: `${eligible.length} of ${machines.length} machines available`,
+      ok: misplaced.length === 0 && eligible.length > 0 && eligible.length === machines.length,
+      note: misplaced.length
+        ? `${misplaced.length} BOR machine${misplaced.length > 1 ? 's' : ''} outside the work center`
+        : `${eligible.length} of ${machines.length} machines available`,
     },
     work_center: {
       check: 'work_center',
-      ok: [...workCenters].every((id) => state.orgNodes.some((n) => n.id === id)),
-      note: `${workCenters.size} work centers`,
+      ok: unresolved.length === 0,
+      note: unresolved.length
+        ? `${unresolved.join(', ')} missing at this site`
+        : `${workCenterCodes.length} work centers`,
     },
     skills: {
       check: 'skills',
@@ -805,8 +999,7 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
       const demand = state.demands.find((d) => d.id === action.id)
       if (demand && (demand.orderItemId || demand.moIds.length || demand.allocatedQty)) return state
     }
-    const key = stripUpsert(action.type)
-    return { ...state, [key]: remove(state[key] as { id: string }[], action.id) }
+    return cascadeRemove(state, stripUpsert(action.type), action.id)
   }
 
   switch (action.type) {
@@ -929,7 +1122,12 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
       if (!allowed[order.status]?.includes(action.status)) return state
       return {
         ...state,
-        marketingOrders: patchItem(state.marketingOrders, order.id, (o) => ({ ...o, status: action.status })),
+        marketingOrders: patchItem(state.marketingOrders, order.id, (o) => ({
+          ...o,
+          status: action.status,
+          deliveredAt: action.status === 'delivered' ? (o.deliveredAt ?? meta.at) : o.deliveredAt,
+          closedAt: action.status === 'closed' ? meta.at : o.closedAt,
+        })),
       }
     }
 
@@ -981,6 +1179,7 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
         marketingOrders: patchItem(state.marketingOrders, item.orderId, (o) => ({
           ...o,
           status: all ? 'delivered' : some ? 'partially_delivered' : o.status,
+          deliveredAt: all ? (o.deliveredAt ?? meta.at) : o.deliveredAt,
         })),
         demands: state.demands.map((d) =>
           d.orderItemId === item.id && delivered >= item.qty ? { ...d, status: 'fulfilled' } : d,
@@ -1465,10 +1664,11 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
       const borItem = bor?.items.find((item) => item.operationSeq === wo.operationSeq)
       const machine = state.machines.find((m) => m.id === wo.machineId)
       if ((borItem?.machineIds.length ?? 0) > 0 && !machine) return state
+      const allowed = borItem ? listedMachines(state, wo.workCenterId, borItem.machineIds) : []
       if (
         machine &&
         (machine.workCenterId !== wo.workCenterId ||
-          (borItem?.machineIds.length && !borItem.machineIds.includes(machine.id)) ||
+          (borItem?.machineIds.length && !allowed.some((m) => m.id === machine.id)) ||
           (machine.eligibleProductIds.length &&
             order &&
             !machine.eligibleProductIds.includes(order.productId)) ||
@@ -2712,6 +2912,7 @@ function releaseMo(state: AppState, meta: ActionMeta, id: string): AppState {
   let cursor = toMs(mo.plannedStart)
   for (const op of [...bop.operations].sort((a, b) => a.seq - b.seq)) {
     const borItem = bor.items.find((i) => i.operationSeq === op.seq)
+    const workCenter = workCenterForSite(state.orgNodes, mo.siteId, op.workCenterCode)!
     const durationMs =
       (op.setupMin + op.queueMin + op.transferMin) * 60_000 +
       (op.cycleSec * mo.qty * 1000) / Math.max(1, borItem?.operatorCount ?? 1)
@@ -2727,7 +2928,7 @@ function releaseMo(state: AppState, meta: ActionMeta, id: string): AppState {
       operationSeq: op.seq,
       operationCode: op.code,
       operationName: op.name,
-      workCenterId: op.workCenterId,
+      workCenterId: workCenter.id,
       machineId: null,
       operatorIds: [],
       shiftId: null,
@@ -3194,7 +3395,7 @@ function releaseHold(state: AppState, meta: ActionMeta, id: string, disposition:
               {
                 id: newId('scr'),
                 siteId: hold.siteId,
-                moId: hold.moId,
+                moId: wip.moId,
                 woId: wip.woId ?? '',
                 wipId: wip.id,
                 operationSeq: wip.operationSeq,

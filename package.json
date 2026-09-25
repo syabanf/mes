@@ -6,18 +6,27 @@
   "scripts": {
     "dev": "turbo run dev --parallel",
     "dev:admin": "pnpm --filter @mes/admin dev",
+    "dev:mobile": "pnpm --filter @mes/mobile dev",
+    "preview:mobile": "pnpm --filter @mes/mobile preview",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck && tsc -p scripts",
     "test": "tsx --test packages/fixtures/test/*.test.ts",
     "format": "prettier --write .",
-    "gen:fixtures": "tsx scripts/generate-fixtures.ts"
+    "gen:fixtures": "tsx scripts/generate-fixtures.ts",
+    "lint": "eslint ."
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^26.6.2",
+    "eslint": "^10.11.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.12.0",
     "prettier": "^3.9.8",
     "prettier-plugin-tailwindcss": "^0.8.1",
     "tsx": "^4.23.15",
     "turbo": "^2.11.2",
-    "typescript": "~5.9.3"
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.70.1"
   }
 }

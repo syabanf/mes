@@ -4,8 +4,22 @@
     {
       "name": "admin",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@mes/admin", "dev"],
+      "runtimeArgs": [
+        "--filter",
+        "@mes/admin",
+        "dev"
+      ],
       "port": 5373
+    },
+    {
+      "name": "mobile",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@mes/mobile",
+        "dev"
+      ],
+      "port": 5374
     }
   ]
 }

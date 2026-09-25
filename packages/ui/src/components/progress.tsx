@@ -20,15 +20,22 @@ export type ProgressBarProps = {
   'aria-label'?: string
 }
 
-export function ProgressBar({ value, tone = 'ink', size = 'sm', className, 'aria-label': ariaLabel }: ProgressBarProps) {
+export function ProgressBar({
+  value,
+  tone = 'ink',
+  size = 'sm',
+  className,
+  'aria-label': ariaLabel,
+}: ProgressBarProps) {
   const percent = Number.isFinite(value) ? Math.round(Math.min(1, Math.max(0, value)) * 100) : 0
   return (
     <div
       role="progressbar"
-      aria-label={ariaLabel}
+      aria-label={ariaLabel ?? 'Progress'}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={percent}
+      aria-valuetext={`${percent}%`}
       className={cn(
         'w-full overflow-hidden rounded-full',
         tone === 'white' ? 'bg-white/25' : 'bg-surface',
@@ -55,7 +62,7 @@ export function SegmentBar({ segments, size = 'md', className }: SegmentBarProps
       role="img"
       aria-label={visible.map((segment) => `${segment.label}: ${segment.value}`).join(', ') || 'No data'}
       className={cn(
-        'flex w-full gap-0.5 overflow-hidden rounded-full',
+        'gap-0.5 flex w-full overflow-hidden rounded-full',
         size === 'sm' ? 'h-1.5' : 'h-2.5',
         visible.length === 0 && 'bg-surface',
         className,
@@ -65,7 +72,7 @@ export function SegmentBar({ segments, size = 'md', className }: SegmentBarProps
         <div
           key={segment.key}
           title={`${segment.label}: ${segment.value}`}
-          className={cn('h-full min-w-1', segment.className)}
+          className={cn('min-w-1 h-full', segment.className)}
           style={{ flexGrow: segment.value, flexBasis: 0 }}
         />
       ))}

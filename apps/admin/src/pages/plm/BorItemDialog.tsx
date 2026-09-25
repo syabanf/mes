@@ -1,4 +1,4 @@
-import { newId } from '@mes/fixtures'
+import { newId, workCenterForSite } from '@mes/fixtures'
 import type { Bor, BorItem } from '@mes/types'
 import {
   Button,
@@ -40,7 +40,7 @@ const nextSeq = (items: readonly BorItem[]) => Math.max(0, ...items.map((i) => i
 function BorItemForm({ bor, item, onDone }: { bor: Bor; item: BorItem | null; onDone: () => void }) {
   const s = useScoped()
   const [seq, setSeq] = useState(String(item?.operationSeq ?? nextSeq(bor.items)))
-  const [workCenterId, setWorkCenterId] = useState<string | null>(item?.workCenterId ?? null)
+  const [workCenterCode, setWorkCenterCode] = useState<string | null>(item?.workCenterCode ?? null)
   const [machineIds, setMachineIds] = useState<string[]>(item?.machineIds ?? [])
   const [toolIds, setToolIds] = useState<string[]>(item?.toolIds ?? [])
   const [moldIds, setMoldIds] = useState<string[]>(item?.moldIds ?? [])
@@ -53,13 +53,15 @@ function BorItemForm({ bor, item, onDone }: { bor: Bor; item: BorItem | null; on
   const [labor, setLabor] = useState(String(item?.laborMinPerUnit ?? 0))
   const [tried, setTried] = useState(false)
 
+  const workCenter = workCenterCode ? workCenterForSite(s.orgNodes, s.siteId, workCenterCode) : undefined
+  const workCenterId = workCenter?.id ?? null
   const machines = useMemo(
     () => s.machines.filter((m) => m.active && (!workCenterId || m.workCenterId === workCenterId)),
     [s.machines, workCenterId],
   )
 
   const pickWorkCenter = (id: string | null) => {
-    setWorkCenterId(id)
+    setWorkCenterCode(id ? (s.maps.orgNode.get(id)?.code ?? null) : null)
     if (id) setMachineIds((prev) => prev.filter((m) => s.maps.machine.get(m)?.workCenterId === id))
   }
 
@@ -70,7 +72,7 @@ function BorItemForm({ bor, item, onDone }: { bor: Bor; item: BorItem | null; on
       : bor.items.some((i) => i.operationSeq === Number(seq) && i.id !== item?.id)
         ? 'Another line already covers this operation.'
         : null,
-    workCenter: !workCenterId ? 'Choose the work center.' : null,
+    workCenter: !workCenterCode ? 'Choose the work center.' : null,
     operators: !(Number(operators) >= 1) ? 'At least one operator.' : null,
     setup: nonNegative(setup),
     cycle: nonNegative(cycle),
@@ -81,11 +83,11 @@ function BorItemForm({ bor, item, onDone }: { bor: Bor; item: BorItem | null; on
   const submit = (e: FormEvent) => {
     e.preventDefault()
     setTried(true)
-    if (Object.values(errors).some(Boolean) || !workCenterId) return
+    if (Object.values(errors).some(Boolean) || !workCenterCode) return
     const next: BorItem = {
       id: item?.id ?? newId('bori'),
       operationSeq: Number(seq),
-      workCenterId,
+      workCenterCode,
       machineIds,
       toolIds,
       moldIds,
@@ -123,7 +125,14 @@ function BorItemForm({ bor, item, onDone }: { bor: Bor; item: BorItem | null; on
               invalid={!!show(errors.seq)}
             />
           </FormField>
-          <FormField label="Work center" required error={show(errors.workCenter)}>
+          <FormField
+            label="Work center"
+            required
+            error={show(errors.workCenter)}
+            hint={
+              workCenterCode && !workCenter ? `${workCenterCode} has no work center at this site` : undefined
+            }
+          >
             <OrgNodePicker
               kind="work_center"
               value={workCenterId}
@@ -132,7 +141,10 @@ function BorItemForm({ bor, item, onDone }: { bor: Bor; item: BorItem | null; on
             />
           </FormField>
         </div>
-        <FormField label="Machines" hint="Leave empty to allow any machine in the work center">
+        <FormField
+          label="Machines"
+          hint="Machines at this site; other sites use any machine in the work center"
+        >
           <MultiCombobox
             items={machines}
             values={machineIds}

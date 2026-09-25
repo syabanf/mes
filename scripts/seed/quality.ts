@@ -290,7 +290,7 @@ const releasedHold = (
   id: string,
   target: QualityHold['target'],
   targetId: string,
-  moId: string,
+  moId: string | null,
   heldAt: number,
   hours: number,
   disposition: Disposition,
@@ -341,12 +341,11 @@ closedWithWips.forEach((b, i) => {
     `${b.mo.code}-B40: surface check pending after compound change`,
   )
 })
-const flexMo = closedWithWips[0]!
 releasedHold(
   'qh-lot-flux',
   'lot',
   returnedLot.id,
-  flexMo.mo.id,
+  null,
   Date.parse(returnedLot.receivedAt) + 5 * DAY,
   6,
   'return',

@@ -46,7 +46,7 @@ export function HoldsPage() {
               query,
               h.code,
               holdTargetCode(s.state, h),
-              s.maps.mo.get(h.moId)?.code,
+              h.moId ? s.maps.mo.get(h.moId)?.code : undefined,
               s.reasonLabel(h.reasonCodeId),
             ),
         )
@@ -93,7 +93,13 @@ export function HoldsPage() {
         </span>
       ),
     },
-    { id: 'mo', header: 'Order', hideBelow: 'lg', cell: (h) => <MoLink moId={h.moId} showProduct={false} /> },
+    {
+      id: 'mo',
+      header: 'Order',
+      hideBelow: 'lg',
+      cell: (h) =>
+        h.moId ? <MoLink moId={h.moId} showProduct={false} /> : <span className="text-muted">No order</span>,
+    },
     {
       id: 'reason',
       header: 'Reason',

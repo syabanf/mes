@@ -37,13 +37,20 @@ export function Badge({ variant, dot = false, className, children, ...props }: B
   )
 }
 
-export type CountBadgeProps = { count: number; tone?: 'accent' | 'white'; className?: string }
+export type CountBadgeProps = {
+  count: number
+  tone?: 'accent' | 'white'
+  className?: string
+  /** Set when the count is already spoken by sibling text, as in a collapsed rail item. */
+  'aria-hidden'?: boolean
+}
 
 /** Unread counter for nav items and tabs. Renders nothing at 0 and caps at 99+. */
-export function CountBadge({ count, tone = 'accent', className }: CountBadgeProps) {
+export function CountBadge({ count, tone = 'accent', className, 'aria-hidden': hidden }: CountBadgeProps) {
   if (!(count > 0)) return null
   return (
     <span
+      aria-hidden={hidden || undefined}
       className={cn(
         'px-1 font-bold inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full text-[10px] leading-none tabular-nums ring-2',
         tone === 'accent' ? 'text-white bg-accent-strong ring-card' : 'bg-white text-ink ring-ink',
@@ -65,12 +72,20 @@ const dotTones: Record<Tone, string> = {
   accent: 'bg-accent',
 }
 
-export type StatusDotProps = { tone: Tone; pulse?: boolean; className?: string }
+export type StatusDotProps = {
+  tone: Tone
+  pulse?: boolean
+  /** Text for screen readers. Omit only when the status is written out next to the dot. */
+  label?: string
+  className?: string
+}
 
-export function StatusDot({ tone, pulse = false, className }: StatusDotProps) {
+export function StatusDot({ tone, pulse = false, label, className }: StatusDotProps) {
   return (
     <span
-      aria-hidden="true"
+      role={label === undefined ? undefined : 'img'}
+      aria-label={label}
+      aria-hidden={label === undefined || undefined}
       className={cn(
         'size-2 inline-block shrink-0 rounded-full',
         dotTones[tone],

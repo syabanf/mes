@@ -14,7 +14,7 @@ import type {
   Specification,
   WorkInstruction,
 } from '../../packages/types/src/index.ts'
-import { DAY, SITE_JKT, dayAt, iso, logEvent, wcId } from './common.ts'
+import { DAY, SITE_JKT, dayAt, iso, logEvent } from './common.ts'
 import { dieId, eligibleMachines, jigFor, moldId } from './machines.ts'
 import { PRODUCT_SPECS, productId, reason, revisionId, type ProductSpec } from './master.ts'
 
@@ -215,7 +215,7 @@ function borItems(p: ProductSpec, id: string): BorItem[] {
     return {
       id: `${id}-i${op.seq}`,
       operationSeq: op.seq,
-      workCenterId: wcId(SITE_JKT, op.wc),
+      workCenterCode: `WC-${op.wc}`,
       machineIds: eligibleMachines(SITE_JKT, op.wc, p.key),
       toolIds: op.seq === 30 ? [dieId(SITE_JKT, p.key)] : [],
       moldIds: op.seq === 10 ? [moldId(SITE_JKT, p.key)] : [],
@@ -250,7 +250,7 @@ function operations(p: ProductSpec, id: string): Operation[] {
     seq: op.seq,
     code: op.code,
     name: op.name,
-    workCenterId: wcId(SITE_JKT, op.wc),
+    workCenterCode: `WC-${op.wc}`,
     setupMin: op.setupMin,
     cycleSec: op.cycleSec[cls],
     queueMin: op.queueMin,

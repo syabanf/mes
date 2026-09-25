@@ -25,7 +25,7 @@ export function Rail({ expanded, header, action, workspace, footer, children, cl
     <aside
       data-expanded={expanded}
       className={cn(
-        'flex h-full flex-col rounded-hero bg-ink py-4 text-on-ink shadow-float transition-[width] duration-200',
+        'py-4 flex h-full flex-col rounded-hero bg-ink text-on-ink shadow-float transition-[width] duration-200',
         expanded ? 'w-60 px-3' : 'w-[76px] items-center',
         className,
       )}
@@ -36,7 +36,7 @@ export function Rail({ expanded, header, action, workspace, footer, children, cl
       <nav
         aria-label="Main"
         className={cn(
-          'no-scrollbar mt-3 flex min-h-0 w-full flex-1 flex-col gap-1 overflow-y-auto p-1',
+          'mt-3 min-h-0 gap-1 p-1 no-scrollbar flex w-full flex-1 flex-col overflow-y-auto',
           !expanded && 'items-center',
         )}
       >
@@ -44,7 +44,9 @@ export function Rail({ expanded, header, action, workspace, footer, children, cl
       </nav>
       {workspace !== undefined && <div className="mt-3 flex w-full shrink-0 justify-center">{workspace}</div>}
       {footer !== undefined && (
-        <div className={cn('mt-3 flex w-full shrink-0 flex-col gap-1', !expanded && 'items-center')}>{footer}</div>
+        <div className={cn('mt-3 gap-1 flex w-full shrink-0 flex-col', !expanded && 'items-center')}>
+          {footer}
+        </div>
       )}
     </aside>
   )
@@ -106,8 +108,11 @@ export function RailItem({
   ) : (
     <>
       {icon}
-      <span className="sr-only">{label}</span>
-      <CountBadge count={badge} tone="white" className="absolute -right-1 -top-1" />
+      <span className="sr-only">
+        {label}
+        {badge > 0 && `, ${badge}`}
+      </span>
+      <CountBadge aria-hidden count={badge} tone="white" className="-right-1 -top-1 absolute" />
     </>
   )
 
@@ -145,10 +150,10 @@ export function RailAction({ label, expanded, className, children, ...props }: R
         type="button"
         aria-label={expanded ? undefined : label}
         className={cn(
-          'inline-flex shrink-0 items-center justify-center bg-accent text-white shadow-glow transition-colors hover:bg-accent-strong active:scale-[0.98] [&_svg]:size-5 [&_svg]:shrink-0',
+          'text-white [&_svg]:size-5 inline-flex shrink-0 items-center justify-center bg-accent shadow-glow transition-colors hover:bg-accent-strong active:scale-[0.98] [&_svg]:shrink-0',
           focusRing,
           expanded
-            ? 'h-11 w-full gap-2 rounded-full px-4 text-sm font-semibold'
+            ? 'h-11 gap-2 px-4 text-sm font-semibold w-full rounded-full'
             : 'size-11 rounded-full hover:-translate-y-px hover:scale-105',
           className,
         )}
@@ -176,7 +181,7 @@ export function RailWorkspace({ icon, kicker, name, expanded, className, ...prop
         <button
           type="button"
           className={cn(
-            'flex size-11 shrink-0 items-center justify-center rounded-2xl bg-card text-ink transition-colors hover:bg-surface active:scale-[0.98] [&_svg]:size-5',
+            'size-11 rounded-2xl [&_svg]:size-5 flex shrink-0 items-center justify-center bg-card text-ink transition-colors hover:bg-surface active:scale-[0.98]',
             focusRing,
             className,
           )}
@@ -194,18 +199,18 @@ export function RailWorkspace({ icon, kicker, name, expanded, className, ...prop
     <button
       type="button"
       className={cn(
-        'flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-ink-2 p-2.5 text-left transition-colors hover:bg-ink-3 active:scale-[0.98]',
+        'gap-3 rounded-2xl border-white/10 p-2.5 flex w-full items-center border bg-ink-2 text-left transition-colors hover:bg-ink-3 active:scale-[0.98]',
         focusRing,
         className,
       )}
       {...props}
     >
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-card text-ink [&_svg]:size-[18px]">
+      <span className="size-9 rounded-xl flex shrink-0 items-center justify-center bg-card text-ink [&_svg]:size-[18px]">
         {icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[10.5px] font-semibold text-on-ink-muted">{kicker}</span>
-        <span className="block truncate text-[12.5px] font-bold text-white">{name}</span>
+        <span className="font-semibold block truncate text-[10.5px] text-on-ink-muted">{kicker}</span>
+        <span className="font-bold text-white block truncate text-[12.5px]">{name}</span>
       </span>
       <ChevronsUpDown aria-hidden="true" className="size-4 shrink-0 text-on-ink-muted" />
     </button>
@@ -222,7 +227,7 @@ export function RailCollapse({ expanded, onToggle, className }: RailCollapseProp
         onClick={onToggle}
         aria-expanded={true}
         className={cn(
-          'flex h-10 w-full items-center justify-center gap-2 rounded-2xl border border-white/10 text-xs font-semibold text-on-ink-muted transition-colors hover:bg-white/10 hover:text-white [&_svg]:size-4',
+          'h-10 gap-2 rounded-2xl border-white/10 text-xs font-semibold hover:bg-white/10 hover:text-white [&_svg]:size-4 flex w-full items-center justify-center border text-on-ink-muted transition-colors',
           focusRing,
           className,
         )}
@@ -240,7 +245,7 @@ export function RailCollapse({ expanded, onToggle, className }: RailCollapseProp
         aria-label="Expand menu"
         aria-expanded={false}
         className={cn(
-          'flex size-11 items-center justify-center rounded-2xl text-on-ink-muted transition-colors hover:bg-white/10 hover:text-white [&_svg]:size-5',
+          'size-11 rounded-2xl hover:bg-white/10 hover:text-white [&_svg]:size-5 flex items-center justify-center text-on-ink-muted transition-colors',
           focusRing,
           className,
         )}

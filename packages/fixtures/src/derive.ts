@@ -165,6 +165,15 @@ export function orgAncestor(
   return node
 }
 
+/** The work center with a given code at a site. Routings carry codes because each site has its own node. */
+export function workCenterForSite(
+  nodes: readonly OrgNode[],
+  siteId: string,
+  code: string,
+): OrgNode | undefined {
+  return nodes.find((n) => n.siteId === siteId && n.kind === 'work_center' && n.code === code)
+}
+
 export function orgDescendants(nodes: readonly OrgNode[], id: string): Set<string> {
   const result = new Set<string>([id])
   let grew = true

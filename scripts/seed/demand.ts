@@ -14,9 +14,22 @@ import type {
   Replenishment,
   ReplenishmentStatus,
 } from '../../packages/types/src/index.ts'
-import { DAY, HOUR, SITE_JKT, SITE_SBY, clampPast, dayAt, iso, logEvent, pad, skipSunday } from './common.ts'
+import {
+  DAY,
+  HOUR,
+  SITE_JKT,
+  SITE_SBY,
+  clampPast,
+  dayAt,
+  iso,
+  isoOrNull,
+  logEvent,
+  pad,
+  skipSunday,
+} from './common.ts'
 import { PRODUCT_SPECS, SBY_PRODUCT_KEYS, customers, inventoryPolicies, productId } from './master.ts'
 import { rng } from './rng.ts'
+import { startOfDay } from '../../packages/fixtures/src/dates.ts'
 
 export interface MoRequest {
   key: string
@@ -222,6 +235,13 @@ function buildOrder(spec: OrderSpec, n: number): Built {
       ['critical', 0.5],
     ])
   const key = `mkt-${n}`
+  // Delivered orders shipped inside the promised window; closed ones were signed off a day or two later.
+  const delivered = spec.status === 'delivered' || spec.status === 'closed'
+  const deliveredAt = delivered
+    ? clampPast(startOfDay(orderAt + (requiredAt - orderAt) * 0.8) + 14 * HOUR)
+    : null
+  const closedAt =
+    spec.status === 'closed' && deliveredAt !== null ? clampPast(deliveredAt + DAY + 2 * HOUR) : null
   const order: MarketingOrder = {
     id: key,
     code: '',
@@ -232,6 +252,8 @@ function buildOrder(spec: OrderSpec, n: number): Built {
     priority,
     reference: spec.reference ?? `PO-${customer.code}-${String(2600 + n * 13).padStart(4, '0')}`,
     status: spec.status,
+    deliveredAt: isoOrNull(deliveredAt),
+    closedAt: isoOrNull(closedAt),
     note:
       spec.note ??
       rng.pick([

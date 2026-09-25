@@ -208,7 +208,8 @@ export interface Bom {
 export interface BorItem {
   id: string
   operationSeq: number
-  workCenterId: string
+  /** Org node code of the work center (WC-CAST); the same code resolves to a node per site. */
+  workCenterCode: string
   machineIds: string[]
   toolIds: string[]
   moldIds: string[]
@@ -236,7 +237,8 @@ export interface Operation {
   seq: number
   code: string
   name: string
-  workCenterId: string
+  /** Org node code of the work center; resolved per site when the order is released. */
+  workCenterCode: string
   setupMin: number
   cycleSec: number
   queueMin: number
@@ -534,6 +536,9 @@ export interface MarketingOrder {
   reference: string
   status: MarketingOrderStatus
   note: string
+  /** Set when the last line is delivered. */
+  deliveredAt: IsoDate | null
+  closedAt: IsoDate | null
   createdBy: string
   createdAt: IsoDate
 }
@@ -881,7 +886,8 @@ export interface QualityHold {
   siteId: string
   target: HoldTarget
   targetId: string
-  moId: string
+  /** Order the held item belongs to; null for an incoming lot outside any order. */
+  moId: string | null
   reasonCodeId: string
   note: string
   status: HoldStatus

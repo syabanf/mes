@@ -23,7 +23,7 @@ import {
   toast,
 } from '@mes/ui'
 import { CalendarRange, GitBranch, Lock, PackageCheck, Warehouse } from 'lucide-react'
-import { type FormEvent, useMemo, useState } from 'react'
+import { type FormEvent, useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { useAuth } from '../../auth/auth'
 import { MoLink, PersonChip, ProductLink, paths } from '../../components/links'
@@ -277,13 +277,16 @@ function ReceiveForm({ onDone }: { onDone: () => void }) {
     for (const r of s.finishedGoodsReceipts) map.set(r.moId, (map.get(r.moId) ?? 0) + r.qty)
     return map
   }, [s.finishedGoodsReceipts])
-  const remaining = (m: ManufacturingOrder) => m.goodQty - (receivedByMo.get(m.id) ?? 0)
+  const remaining = useCallback(
+    (m: ManufacturingOrder) => m.goodQty - (receivedByMo.get(m.id) ?? 0),
+    [receivedByMo],
+  )
   const orders = useMemo(
     () =>
       s.manufacturingOrders
         .filter((m) => m.status === 'completed' && remaining(m) > 0)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [s.manufacturingOrders, receivedByMo],
+    [s.manufacturingOrders, remaining],
   )
 
   const mo = orders.find((m) => m.id === moId)

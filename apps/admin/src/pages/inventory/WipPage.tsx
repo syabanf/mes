@@ -18,7 +18,7 @@ import {
   cn,
 } from '@mes/ui'
 import { Boxes, Hourglass, Layers, Microscope, Plus, Wrench } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router'
 import { useAuth } from '../../auth/auth'
 import { WipStateBadge } from '../../components/badges'
@@ -61,15 +61,21 @@ export function WipPage() {
   const table = useTableHistory()
   const manage = can('shopfloor.execute') || can('inventory.manage')
 
-  const aging = (w: Wip) => wipAgeHours(w, now) > s.settings.wipAgingHours
-  const keyOf = (w: Wip): string =>
-    group === 'operation'
-      ? String(w.operationSeq)
-      : group === 'location'
-        ? w.locationId
-        : group === 'mo'
-          ? w.moId
-          : w.state
+  const aging = useCallback(
+    (w: Wip) => wipAgeHours(w, now) > s.settings.wipAgingHours,
+    [now, s.settings.wipAgingHours],
+  )
+  const keyOf = useCallback(
+    (w: Wip): string =>
+      group === 'operation'
+        ? String(w.operationSeq)
+        : group === 'location'
+          ? w.locationId
+          : group === 'mo'
+            ? w.moId
+            : w.state,
+    [group],
+  )
   const labelOf = (key: string): string => {
     if (group === 'operation') {
       const sample = s.wips.find((w) => String(w.operationSeq) === key)
@@ -94,9 +100,9 @@ export function WipPage() {
       base
         .filter((w) => !groupValue || keyOf(w) === groupValue)
         .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
-    [base, groupValue, group],
+    [base, groupValue, keyOf],
   )
-  const groups = useMemo(() => rankBy(base, keyOf, (w) => w.qty), [base, group])
+  const groups = useMemo(() => rankBy(base, keyOf, (w) => w.qty), [base, keyOf])
 
   const stats = useMemo(() => {
     const active = s.wips.filter(
@@ -110,7 +116,7 @@ export function WipPage() {
       aging: active.filter(aging).length,
       active,
     }
-  }, [s.wips, s.settings.wipAgingHours, moId, now])
+  }, [s.wips, moId, aging])
 
   const setParam = (key: string, value: string | null) =>
     setParams(

@@ -1,3 +1,4 @@
+export * from './analytics'
 export * from './clock'
 export * from './data'
 export * from './dates'

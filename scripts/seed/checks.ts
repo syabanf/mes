@@ -32,6 +32,15 @@ export function runChecks(state: AppState): void {
     }
   }
   const s = state as unknown as Record<string, object[]>
+  const workCenterAt = (siteId: string, code: string) =>
+    state.orgNodes.find((n) => n.siteId === siteId && n.kind === 'work_center' && n.code === code)
+  /** Routing lines carry a work center code that every site with production must resolve. */
+  const workCenterCodes = (name: string, rows: readonly { id: string; workCenterCode: string }[]) => {
+    for (const row of rows)
+      for (const site of state.sites)
+        if (!workCenterAt(site.id, row.workCenterCode))
+          fail(`${name}.workCenterCode: ${row.workCenterCode} missing at ${site.id} (row ${row.id})`)
+  }
 
   // ─── Foreign keys ─────────────────────────────────────────────
   ref('orgNodes', s.orgNodes!, 'siteId', 'sites')
@@ -58,7 +67,7 @@ export function runChecks(state: AppState): void {
     ref(`boms(${bom.id}).items`, bom.items, 'substituteMaterialIds', 'materials')
   }
   for (const bor of state.bors) {
-    ref(`bors(${bor.id}).items`, bor.items, 'workCenterId', 'orgNodes')
+    workCenterCodes(`bors(${bor.id}).items`, bor.items)
     ref(`bors(${bor.id}).items`, bor.items, 'machineIds', 'machines')
     ref(`bors(${bor.id}).items`, bor.items, 'toolIds', 'resources')
     ref(`bors(${bor.id}).items`, bor.items, 'moldIds', 'resources')
@@ -67,7 +76,7 @@ export function runChecks(state: AppState): void {
     ref(`bors(${bor.id}).items`, bor.items, 'skillIds', 'skills')
   }
   for (const bop of state.bops) {
-    ref(`bops(${bop.id}).operations`, bop.operations, 'workCenterId', 'orgNodes')
+    workCenterCodes(`bops(${bop.id}).operations`, bop.operations)
     ref(`bops(${bop.id}).operations`, bop.operations, 'workInstructionId', 'workInstructions')
   }
   ref('specifications', s.specifications!, 'productId', 'products')
@@ -101,6 +110,17 @@ export function runChecks(state: AppState): void {
   ref('marketingOrders', s.marketingOrders!, 'customerId', 'customers')
   ref('marketingOrders', s.marketingOrders!, 'createdBy', 'people')
   ref('marketingOrderItems', s.marketingOrderItems!, 'orderId', 'marketingOrders')
+  for (const o of state.marketingOrders) {
+    const delivered = o.status === 'delivered' || o.status === 'closed'
+    if (delivered !== (o.deliveredAt !== null))
+      fail(`marketingOrders ${o.code}: deliveredAt does not match ${o.status}`)
+    if ((o.status === 'closed') !== (o.closedAt !== null))
+      fail(`marketingOrders ${o.code}: closedAt does not match ${o.status}`)
+    if (o.deliveredAt && toMs(o.deliveredAt) < toMs(o.orderDate))
+      fail(`marketingOrders ${o.code}: delivered before ordered`)
+    if (o.closedAt && o.deliveredAt && toMs(o.closedAt) < toMs(o.deliveredAt))
+      fail(`marketingOrders ${o.code}: closed before delivered`)
+  }
   ref('marketingOrderItems', s.marketingOrderItems!, 'productId', 'products')
   ref('marketingOrderItems', s.marketingOrderItems!, 'uomId', 'uoms')
   ref('demands', s.demands!, 'siteId', 'sites')
@@ -220,6 +240,7 @@ export function runChecks(state: AppState): void {
   ref('qualityHolds', s.qualityHolds!, 'heldBy', 'people')
   ref('qualityHolds', s.qualityHolds!, 'releasedBy', 'people')
   for (const h of state.qualityHolds) {
+    if (h.moId === null && h.target !== 'lot') fail(`qualityHolds ${h.id}: ${h.target} hold without an order`)
     const target =
       h.target === 'wip'
         ? 'wips'
@@ -310,6 +331,9 @@ export function runChecks(state: AppState): void {
         fail(`wo ${wo.code}: ${p.id} is not an operator at ${wo.siteId}`)
     }
     if (orgById.get(wo.workCenterId)!.siteId !== wo.siteId) fail(`wo ${wo.code}: work center on another site`)
+    const op = bopById.get(mo.snapshot?.bopId ?? '')?.operations.find((o) => o.seq === wo.operationSeq)
+    if (op && workCenterAt(wo.siteId, op.workCenterCode)?.id !== wo.workCenterId)
+      fail(`wo ${wo.code}: work center ${wo.workCenterId} is not ${op.workCenterCode} at ${wo.siteId}`)
   }
   for (const mo of state.manufacturingOrders) {
     const wos = state.workOrders

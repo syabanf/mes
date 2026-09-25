@@ -57,7 +57,7 @@ export function RoleHome() {
                 .map((h) => ({
                   id: h.id,
                   title: `${h.code} · quality hold`,
-                  detail: s.maps.mo.get(h.moId)?.code ?? '',
+                  detail: (h.moId && s.maps.mo.get(h.moId)?.code) || 'No order',
                   to: paths.hold(h.id),
                 })),
             ].slice(0, 6)

@@ -9,6 +9,13 @@ export type StepsProps = {
   className?: string
 }
 
+const stateLabels: Record<StepState, string> = {
+  current: 'Current step',
+  done: 'Done',
+  upcoming: 'Upcoming',
+  skipped: 'Skipped',
+}
+
 const stateClasses: Record<StepState, string> = {
   current: 'bg-ink text-on-ink',
   done: 'bg-card text-foreground shadow-card',
@@ -19,14 +26,14 @@ const stateClasses: Record<StepState, string> = {
 /** Pill stepper that scrolls sideways when it does not fit. */
 export function Steps({ steps, className }: StepsProps) {
   return (
-    <div className="relative">
+    <div className="min-w-0 relative">
       <ol className={cn('gap-2 pb-2 pr-10 no-scrollbar flex overflow-x-auto', className)}>
         {steps.map((step, index) => (
           <li
             key={step.key}
             aria-current={step.state === 'current' ? 'step' : undefined}
             className={cn(
-              'h-10 gap-2 px-4 text-sm font-semibold inline-flex shrink-0 items-center rounded-full',
+              'h-10 gap-2 px-4 text-sm font-semibold relative inline-flex shrink-0 items-center rounded-full',
               stateClasses[step.state],
             )}
           >
@@ -38,7 +45,10 @@ export function Steps({ steps, className }: StepsProps) {
               <span className="text-xs tabular-nums opacity-60">{index + 1}</span>
             )}
             <span className="leading-tight flex flex-col">
-              <span>{step.label}</span>
+              <span>
+                {step.label}
+                <span className="sr-only">, {stateLabels[step.state]}</span>
+              </span>
               {step.hint !== undefined && (
                 <span className="font-medium text-[11px] opacity-70">{step.hint}</span>
               )}

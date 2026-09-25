@@ -1,5 +1,10 @@
 import { fmtDateShort, fmtNumber, monthKey, toMs } from '@mes/fixtures'
-import type { FulfillmentStrategy, MarketingOrder, MarketingOrderStatus } from '@mes/types'
+import type {
+  FulfillmentStrategy,
+  MarketingOrder,
+  MarketingOrderItem,
+  MarketingOrderStatus,
+} from '@mes/types'
 import { MO_ORDER_STATUS_LABEL, OPEN_MARKETING_ORDER_STATUSES, STRATEGY_SHORT } from '@mes/types'
 import { Badge, Button, Chip, ChipRow, type Column, DataTable, Input, PageHeader, StatCard } from '@mes/ui'
 import { FileClock, Factory, PackageCheck, Plus, Search, Truck } from 'lucide-react'
@@ -49,7 +54,7 @@ export function MarketingOrdersPage() {
   const table = useTableHistory()
 
   const itemsByOrder = useMemo(() => {
-    const map = new Map<string, typeof s.marketingOrderItems>()
+    const map = new Map<string, MarketingOrderItem[]>()
     for (const item of s.marketingOrderItems) {
       const list = map.get(item.orderId)
       if (list) list.push(item)
@@ -80,9 +85,10 @@ export function MarketingOrdersPage() {
       draft: s.marketingOrders.filter((o) => o.status === 'draft').length,
       fulfilling: s.marketingOrders.filter((o) => VIEW_STATUSES.fulfilling.includes(o.status)).length,
       ready: s.marketingOrders.filter((o) => VIEW_STATUSES.ready.includes(o.status)).length,
-      delivered: s.marketingOrders.filter(
-        (o) => VIEW_STATUSES.delivered.includes(o.status) && monthKey(toMs(o.requiredDate)) === month,
-      ).length,
+      delivered: s.marketingOrders.filter((o) => {
+        const at = o.deliveredAt ?? o.closedAt
+        return at !== null && monthKey(toMs(at)) === month
+      }).length,
     }
   }, [s.marketingOrders, now])
 
@@ -226,7 +232,7 @@ export function MarketingOrdersPage() {
           <StatCard
             label="Delivered this month"
             value={stats.delivered}
-            hint="Required date in this month"
+            hint="Delivery recorded this month"
             icon={<Truck />}
             tone="info"
             onClick={() => setView('delivered')}

@@ -1,5 +1,5 @@
 import { Banner, cn, useMediaQuery } from '@mes/ui'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigationType } from 'react-router'
 import { CreateProvider } from '../components/create'
 import { usePersistentState } from '../lib/storage'
@@ -40,8 +40,11 @@ export function AdminLayout() {
   useLayoutEffect(() => {
     entryKey.current = key
   }, [key])
-  useLayoutEffect(() => {
+  const restoreScroll = useEffectEvent(() => {
     mainRef.current?.scrollTo({ top: navigationType === 'POP' ? (scrollTops.get(key) ?? 0) : 0 })
+  })
+  useLayoutEffect(() => {
+    restoreScroll()
   }, [pathname])
 
   return (

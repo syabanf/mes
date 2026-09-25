@@ -235,6 +235,11 @@ export const router = createBrowserRouter([
         lazy: page(() => import('./pages/planning/ResourceLoadPage'), 'ResourceLoadPage'),
       },
 
+      { path: 'analytics', element: <Navigate to="/analytics/production" replace /> },
+      { path: 'analytics/production', lazy: page(() => import('./pages/analytics/ProductionAnalyticsPage'), 'ProductionAnalyticsPage') },
+      { path: 'analytics/intelligence', lazy: page(() => import('./pages/analytics/IntelligencePage'), 'IntelligencePage') },
+      { path: 'analytics/optimization', lazy: page(() => import('./pages/analytics/OptimizationPage'), 'OptimizationPage') },
+
       { path: 'master-data', element: <Navigate to="/master-data/organization" replace /> },
       {
         path: 'master-data/:domain',

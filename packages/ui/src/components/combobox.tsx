@@ -123,13 +123,9 @@ function ComboboxRoot<T>(props: RootProps<T>) {
       aria-describedby={field.describedBy}
       aria-invalid={isInvalid || undefined}
       disabled={disabled}
-      className={cn(
-        triggerVariants({ variant }),
-        isInvalid && invalidClass(variant),
-        className,
-      )}
+      className={cn(triggerVariants({ variant }), isInvalid && invalidClass(variant), className)}
     >
-      <span className="flex min-w-0 flex-1 items-center gap-2">
+      <span className="min-w-0 gap-2 flex flex-1 items-center">
         <TriggerValue
           items={items}
           getKey={getKey}
@@ -145,7 +141,13 @@ function ComboboxRoot<T>(props: RootProps<T>) {
   )
 
   const panel = (
-    <ComboboxPanel {...props} label={label} listId={listId} inSheet={isPhone} onClose={() => setOpen(false)} />
+    <ComboboxPanel
+      {...props}
+      label={label}
+      listId={listId}
+      inSheet={isPhone}
+      onClose={() => setOpen(false)}
+    />
   )
 
   if (isPhone) {
@@ -174,7 +176,7 @@ function ComboboxRoot<T>(props: RootProps<T>) {
           align="start"
           sideOffset={6}
           collisionPadding={12}
-          className="z-50 flex w-72 min-w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-float outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
+          className="w-72 rounded-2xl z-50 flex max-w-[calc(100vw-1.5rem)] min-w-[var(--radix-popover-trigger-width)] flex-col overflow-hidden border border-border bg-card text-foreground shadow-float outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
         >
           {panel}
         </PopoverPrimitive.Content>
@@ -203,7 +205,7 @@ function TriggerValue<T>({
   if (!selection.multi) {
     return (
       <>
-        {renderIcon && <span className="flex shrink-0 [&_svg]:size-4">{renderIcon(first)}</span>}
+        {renderIcon && <span className="[&_svg]:size-4 flex shrink-0">{renderIcon(first)}</span>}
         <span className="truncate">{getLabel(first)}</span>
       </>
     )
@@ -223,7 +225,7 @@ function TriggerValue<T>({
     variant === 'soft' ? 'bg-card' : 'bg-surface',
   )
   return (
-    <span className="flex min-w-0 items-center gap-1 overflow-hidden">
+    <span className="min-w-0 gap-1 flex items-center overflow-hidden">
       {selected.slice(0, 3).map((item) => (
         <span key={getKey(item)} className={cn(chip, 'max-w-[10rem]')}>
           <span className="truncate">{getLabel(item)}</span>
@@ -243,7 +245,8 @@ function scrollIntoContainer(container: HTMLElement, el: HTMLElement) {
   const top = el.offsetTop
   const bottom = top + el.offsetHeight
   if (top < container.scrollTop) container.scrollTop = top - 4
-  else if (bottom > container.scrollTop + container.clientHeight) container.scrollTop = bottom - container.clientHeight + 4
+  else if (bottom > container.scrollTop + container.clientHeight)
+    container.scrollTop = bottom - container.clientHeight + 4
 }
 
 function ComboboxPanel<T>({
@@ -279,12 +282,19 @@ function ComboboxPanel<T>({
     const tokens = q.split(/\s+/).filter(Boolean)
     if (tokens.length === 0) return items
     return items.filter((item) =>
-      matches([getLabel(item), getDescription?.(item) ?? '', ...(getKeywords?.(item) ?? [])].join(' ').toLowerCase(), tokens),
+      matches(
+        [getLabel(item), getDescription?.(item) ?? '', ...(getKeywords?.(item) ?? [])]
+          .join(' ')
+          .toLowerCase(),
+        tokens,
+      ),
     )
     // Getters are treated as pure functions of the item, so only data and query changes re-filter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, q])
 
-  const isSelected = (key: string) => (selection.multi ? selection.values.includes(key) : selection.value === key)
+  const isSelected = (key: string) =>
+    selection.multi ? selection.values.includes(key) : selection.value === key
 
   const rows: Row<T>[] = []
   if (!selection.multi && selection.clearable && selection.value !== null) {
@@ -317,7 +327,8 @@ function ComboboxPanel<T>({
   function move(step: 1 | -1) {
     if (enabled.length === 0) return
     const index = enabled.findIndex((row) => row.id === current)
-    const next = index === -1 ? (step === 1 ? 0 : enabled.length - 1) : (index + step + enabled.length) % enabled.length
+    const next =
+      index === -1 ? (step === 1 ? 0 : enabled.length - 1) : (index + step + enabled.length) % enabled.length
     scrollPending.current = true
     setActiveId(enabled[next]?.id ?? null)
   }
@@ -370,7 +381,14 @@ function ComboboxPanel<T>({
 
     if (row.kind === 'clear') {
       return (
-        <div key={row.id} {...common} aria-selected={false} onPointerMove={() => setActiveId(row.id)} onClick={() => pick(row)} className={cn(rowClass, 'text-muted')}>
+        <div
+          key={row.id}
+          {...common}
+          aria-selected={false}
+          onPointerMove={() => setActiveId(row.id)}
+          onClick={() => pick(row)}
+          className={cn(rowClass, 'text-muted')}
+        >
           <X aria-hidden="true" className="size-4 shrink-0" />
           <span className="truncate">Clear selection</span>
         </div>
@@ -379,7 +397,14 @@ function ComboboxPanel<T>({
 
     if (row.kind === 'create') {
       return (
-        <div key={row.id} {...common} aria-selected={false} onPointerMove={() => setActiveId(row.id)} onClick={() => pick(row)} className={cn(rowClass, 'font-semibold text-accent')}>
+        <div
+          key={row.id}
+          {...common}
+          aria-selected={false}
+          onPointerMove={() => setActiveId(row.id)}
+          onClick={() => pick(row)}
+          className={cn(rowClass, 'font-semibold text-accent')}
+        >
           <Plus aria-hidden="true" className="size-4 shrink-0" />
           <span className="truncate">{createLabel ? createLabel(trimmed) : `Create "${trimmed}"`}</span>
         </div>
@@ -404,8 +429,8 @@ function ComboboxPanel<T>({
           <span
             aria-hidden="true"
             className={cn(
-              'flex size-4 shrink-0 items-center justify-center rounded-[5px] border [&_svg]:size-3',
-              selected ? 'border-accent bg-accent text-white' : 'border-border bg-card',
+              'size-4 [&_svg]:size-3 flex shrink-0 items-center justify-center rounded-[5px] border',
+              selected ? 'text-white border-accent bg-accent' : 'border-border bg-card',
               disabled && 'opacity-50',
             )}
           >
@@ -413,13 +438,17 @@ function ComboboxPanel<T>({
           </span>
         )}
         {renderIcon && (
-          <span className={cn('flex shrink-0 [&_svg]:size-4', disabled && 'opacity-50')}>{renderIcon(row.item)}</span>
+          <span className={cn('[&_svg]:size-4 flex shrink-0', disabled && 'opacity-50')}>
+            {renderIcon(row.item)}
+          </span>
         )}
         <span className="min-w-0 flex-1">
           <span className={cn('block truncate', disabled && 'text-muted')}>{getLabel(row.item)}</span>
-          {secondary && <span className="block truncate text-xs text-muted">{secondary}</span>}
+          {secondary && <span className="text-xs block truncate text-muted">{secondary}</span>}
         </span>
-        {!selection.multi && selected && <Check aria-hidden="true" className="ml-auto size-4 shrink-0 text-accent" />}
+        {!selection.multi && selected && (
+          <Check aria-hidden="true" className="size-4 ml-auto shrink-0 text-accent" />
+        )}
       </div>
     )
   }
@@ -428,7 +457,7 @@ function ComboboxPanel<T>({
 
   return (
     <>
-      <div className="flex h-11 shrink-0 items-center gap-2 border-b border-border px-3">
+      <div className="h-11 gap-2 px-3 flex shrink-0 items-center border-b border-border">
         <Search aria-hidden="true" className="size-4 shrink-0 text-muted" />
         <input
           value={query}
@@ -446,10 +475,10 @@ function ComboboxPanel<T>({
           autoComplete="off"
           autoCorrect="off"
           spellCheck={false}
-          className="h-full min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted md:text-sm"
+          className="min-w-0 text-base md:text-sm h-full flex-1 bg-transparent outline-none placeholder:text-muted"
         />
         {items.length > COUNTER_THRESHOLD && (
-          <span className="shrink-0 text-xs tabular-nums text-muted">
+          <span className="text-xs shrink-0 text-muted tabular-nums">
             {filtered.length} of {items.length}
           </span>
         )}
@@ -464,22 +493,27 @@ function ComboboxPanel<T>({
       >
         <div
           ref={scrollRef}
-          className={cn('relative overflow-y-auto overscroll-contain p-1', inSheet ? 'min-h-0 flex-1' : 'max-h-64')}
+          className={cn(
+            'p-1 relative overflow-y-auto overscroll-contain',
+            inSheet ? 'min-h-0 flex-1' : 'max-h-64',
+          )}
         >
           {rows.map(renderRow)}
           {filtered.length === 0 && (
-            <div className="px-3 py-6 text-center text-sm text-muted">
+            <div className="px-3 py-6 text-sm text-center text-muted">
               {q ? `No matches for "${trimmed}"` : emptyText}
             </div>
           )}
         </div>
-        {createRow && <div className="shrink-0 border-t border-border p-1">{renderRow(createRow, rows.length)}</div>}
+        {createRow && (
+          <div className="p-1 shrink-0 border-t border-border">{renderRow(createRow, rows.length)}</div>
+        )}
       </div>
 
       {selection.multi && (
-        <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border px-3 py-2">
+        <div className="gap-2 px-3 py-2 flex shrink-0 items-center justify-between border-t border-border">
           <span className="text-xs text-muted">{selectedCount} selected</span>
-          <div className="flex items-center gap-1">
+          <div className="gap-1 flex items-center">
             {selectedCount > 0 && (
               <Button type="button" variant="ghost" size="sm" onClick={() => selection.onChange([])}>
                 Clear

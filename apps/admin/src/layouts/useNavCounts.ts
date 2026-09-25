@@ -1,9 +1,12 @@
+import { countOpenRecommendations, nowMs } from '@mes/fixtures'
 import { useMemo } from 'react'
+import { readStorage } from '../lib/storage'
 import { useScoped } from '../state/scoped'
 import type { BadgeKey } from './nav'
 
 /** Counts behind the navigation badges. */
 export function useNavCounts(): Record<BadgeKey, number> {
+  const s = useScoped()
   const {
     marketingOrders,
     demands,
@@ -14,7 +17,7 @@ export function useNavCounts(): Record<BadgeKey, number> {
     inspections,
     manufacturingOrders,
     materialRequirements,
-  } = useScoped()
+  } = s
   return useMemo(
     () => ({
       draftOrders: marketingOrders.filter((o) => o.status === 'draft').length,
@@ -28,6 +31,11 @@ export function useNavCounts(): Record<BadgeKey, number> {
       atRisk: manufacturingOrders.filter((m) => m.atRisk && m.status !== 'closed' && m.status !== 'cancelled')
         .length,
       shortages: materialRequirements.filter((r) => r.status === 'shortage').length,
+      recommendations: countOpenRecommendations(
+        s,
+        nowMs(),
+        readStorage<{ id: string }[]>('mes.admin.optimization.decisions', []).map((d) => d.id),
+      ),
     }),
     [
       marketingOrders,
@@ -39,6 +47,7 @@ export function useNavCounts(): Record<BadgeKey, number> {
       inspections,
       manufacturingOrders,
       materialRequirements,
+      s,
     ],
   )
 }

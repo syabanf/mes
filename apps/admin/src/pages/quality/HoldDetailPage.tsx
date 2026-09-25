@@ -122,7 +122,8 @@ export function HoldDetailPage() {
               </Link>
             </h1>
             <p className="text-sm text-on-ink-muted">
-              {s.reasonLabel(hold.reasonCodeId)} · {s.maps.mo.get(hold.moId)?.code ?? 'no order'}
+              {s.reasonLabel(hold.reasonCodeId)} ·{' '}
+              {(hold.moId && s.maps.mo.get(hold.moId)?.code) || 'no order'}
             </p>
           </div>
           <div className="gap-2 flex flex-wrap">
@@ -168,7 +169,7 @@ export function HoldDetailPage() {
                     </span>
                   ),
                 },
-                { label: 'Order', value: <MoLink moId={hold.moId} /> },
+                { label: 'Order', value: hold.moId ? <MoLink moId={hold.moId} /> : 'No order' },
                 { label: 'Reason', value: s.reasonLabel(hold.reasonCodeId) },
                 { label: 'Note', value: hold.note || 'None' },
                 {

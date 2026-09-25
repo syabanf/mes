@@ -5,7 +5,9 @@ import {
   Blocks,
   BookOpenText,
   Boxes,
+  BrainCircuit,
   CalendarRange,
+  ChartColumn,
   ChartNoAxesGantt,
   ClipboardCheck,
   ClipboardList,
@@ -38,6 +40,7 @@ import {
   ShieldCheck,
   ShoppingCart,
   SlidersHorizontal,
+  Sparkles,
   Split,
   Tags,
   Trash2,
@@ -59,6 +62,7 @@ export type BadgeKey =
   | 'pendingInspections'
   | 'atRisk'
   | 'shortages'
+  | 'recommendations'
 
 export interface NavLeaf {
   to: string
@@ -185,6 +189,17 @@ export const NAV: NavSection[] = [
       { to: '/planning/capacity', label: 'Capacity', icon: Gauge },
       { to: '/planning/schedule', label: 'Schedule', icon: ChartNoAxesGantt },
       { to: '/planning/resource-load', label: 'Resource load', icon: TrendingUp },
+    ],
+  },
+  {
+    id: 'analytics',
+    label: 'Analytics',
+    icon: ChartColumn,
+    to: '/analytics/production',
+    items: [
+      { to: '/analytics/production', label: 'Production analytics', icon: ChartColumn },
+      { to: '/analytics/intelligence', label: 'Intelligence', icon: BrainCircuit },
+      { to: '/analytics/optimization', label: 'Optimization', icon: Sparkles, badge: 'recommendations' },
     ],
   },
   {
